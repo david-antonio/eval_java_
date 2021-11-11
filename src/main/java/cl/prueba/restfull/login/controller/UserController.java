@@ -24,7 +24,7 @@ import cl.prueba.restfull.login.model.LoginUserResp;
 import cl.prueba.restfull.login.model.User;
 import cl.prueba.restfull.login.repository.UserRepository;
 
-@CrossOrigin(origins = "http://localhost:8081")
+@CrossOrigin(origins = "http://localhost:8080")
 @RestController
 @RequestMapping("/apirest")
 public class UserController {
@@ -34,13 +34,21 @@ public class UserController {
 
 	static private String REG_EXP_MAIL = "^[\\w!#$%&'*+/=?`{|}~^-]+(?:\\.[\\w!#$%&'*+/=?`{|}~^-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,6}$";
 
+	/**
+	 * Metodo get para obtener usuario
+	 * @param email
+	 * @return 
+	 */
 	@GetMapping("/users/{email}")
-	public ResponseEntity<User> getUserByEmail(@PathVariable("email") String email) {
+	public ResponseEntity<CreateUserResp> getUserByEmail(@PathVariable("email") String email) {
 		List<User> usuarios = userRepository.findByEmail(email);
+		CreateUserResp createUserResp = new CreateUserResp();
 		if (!usuarios.isEmpty()) {
-			return new ResponseEntity<>(usuarios.get(0), HttpStatus.OK);
+			BeanUtils.copyProperties(usuarios.get(0), createUserResp);
+			return new ResponseEntity<>(createUserResp, HttpStatus.OK);
 		} else {
-			return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+			createUserResp.setMensaje("Usuario no registrado");
+			return new ResponseEntity<>(createUserResp, HttpStatus.NOT_FOUND);
 		}
 	}
 
@@ -70,7 +78,7 @@ public class UserController {
 	}
 
 	/**
-	 * Servicio permite login de usuario actualizando fecha de ultimo login y retornando un nuevo session uuid
+	 * Metodo post que permite el login de usuario actualizando fecha de ultimo login y retornando un nuevo session uuid
 	 * @param user
 	 * @return
 	 */
@@ -82,7 +90,7 @@ public class UserController {
 			String mensajeValidacion = validacionLogin(usuarioResp, user);
 			if (mensajeValidacion != null) {
 				loginUserResp.setMensaje(mensajeValidacion);
-				return new ResponseEntity<>(loginUserResp, HttpStatus.CONFLICT);
+				return new ResponseEntity<>(loginUserResp, HttpStatus.UNAUTHORIZED);
 			}
 			final UUID uuidSession = UUID.randomUUID();
 			User usuarioLogin = usuarioResp.get(0);
@@ -117,7 +125,7 @@ public class UserController {
 				return new ResponseEntity<>(estado, HttpStatus.OK);
 			} else {
 				estado.setMensaje("Usuario no encontrado");
-				return new ResponseEntity<>(estado, HttpStatus.NO_CONTENT);
+				return new ResponseEntity<>(estado, HttpStatus.NOT_FOUND);
 			}
 		} catch (Exception e) {
 			System.out.println(e);
@@ -128,7 +136,7 @@ public class UserController {
 	/**
 	 * @return retorna el mensaje en caso de error y null en caso OK
 	 */
-	private String validacionIngreso(User user){ 
+	private String validacionIngreso(User user) { 
 		List<User> usuarioResp = userRepository.findByEmail(user.getEmail());
 		if (!usuarioResp.isEmpty()) {
 			return "Correo ya registrado";
@@ -141,7 +149,7 @@ public class UserController {
 	/**
 	 * @return retorna el mensaje en caso de error y null en caso OK
 	 */
-	private String validacionLogin(List<User> usuarioResp, User user){ 
+	private String validacionLogin(List<User> usuarioResp, User user) { 
 		if (usuarioResp.isEmpty() || !usuarioResp.get(0).getPassword().equals(user.getPassword())) {
 			return "Usuario o clave invalida";
 		}
